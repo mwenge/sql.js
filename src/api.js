@@ -230,6 +230,11 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         "number",
         ["number"]
     );
+    var registerCSVTable = cwrap(
+        "RegisterCSVTable",
+        "number",
+        ["number"]
+    );
 
     /**
     * @classdesc
@@ -822,11 +827,36 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         this.handleError(sqlite3_open(this.filename, apiTemp));
         this.db = getValue(apiTemp, "i32");
         registerExtensionFunctions(this.db);
+        registerCSVTable(this.db);
         // A list of all prepared statements of the database
         this.statements = {};
         // A list of all user function of the database
         // (created by create_function call)
         this.functions = {};
+    }
+
+    /** @classdesc
+    * Represents an SQLite database
+    * @constructs Database
+    * @memberof module:SqlJs
+    * Open a new database either by creating a new one or opening an existing
+    * one stored in the byte array passed in first argument
+    * @param {number[]} data An array of bytes representing
+    * an SQLite database file
+    */
+    Database.prototype["createCSVTable"] = function createCSVTable(data, fileName) {
+        if (!this.db) {
+            throw "Database closed";
+        }
+        if (data == null) {
+            throw "No data for CSV file";
+        }
+        this.filename = "csvfile_" + (0xffffffff * Math.random() >>> 0);
+        if (data != null) {
+            FS.createDataFile("/", this.filename, data, true, true);
+        }
+        let sql = "CREATE VIRTUAL TABLE temp.\"" + fileName + "\" USING csv(filename='" + this.filename + "', header=true);"
+        this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
     }
 
     /** Execute an SQL query, ignoring the rows it returns.

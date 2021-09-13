@@ -15,6 +15,11 @@ EXTENSION_FUNCTIONS = extension-functions.c
 EXTENSION_FUNCTIONS_URL = https://www.sqlite.org/contrib/download/extension-functions.c?get=25
 EXTENSION_FUNCTIONS_SHA1 = c68fa706d6d9ff98608044c00212473f9c14892f
 
+# Note that extension-functions.c hasn't been updated since 2010-02-06, so likely doesn't need to be updated
+CSV_TABLE = csv.c
+CSV_TABLE_URL = csv/csv.c
+CSV_TABLE_SHA1 = 0e5ccb38b0d88d362364af45d399b98c9f735c26
+
 EMCC=emcc
 
 CFLAGS = \
@@ -62,7 +67,7 @@ EMFLAGS_DEBUG = \
 	-s ASSERTIONS=1 \
 	-O1
 
-BITCODE_FILES = out/sqlite3.bc out/extension-functions.bc
+BITCODE_FILES = out/sqlite3.bc out/extension-functions.bc out/csv.bc
 
 OUTPUT_WRAPPER_FILES = src/shell-pre.js src/shell-post.js
 
@@ -156,6 +161,12 @@ out/extension-functions.bc: sqlite-src/$(SQLITE_AMALGAMATION)
 	# Generate llvm bitcode
 	$(EMCC) $(CFLAGS) -c sqlite-src/$(SQLITE_AMALGAMATION)/extension-functions.c -o $@
 
+# Since the extension-functions.c includes other headers in the sqlite_amalgamation, we declare that this depends on more than just extension-functions.c
+out/csv.bc: sqlite-src/$(SQLITE_AMALGAMATION)
+	mkdir -p out
+	# Generate llvm bitcode
+	$(EMCC) $(CFLAGS) -c sqlite-src/$(SQLITE_AMALGAMATION)/csv.c -o $@
+
 # TODO: This target appears to be unused. If we re-instatate it, we'll need to add more files inside of the JS folder
 # module.tar.gz: test package.json AUTHORS README.md dist/sql-asm.js
 # 	tar --create --gzip $^ > $@
@@ -169,11 +180,17 @@ cache/$(EXTENSION_FUNCTIONS):
 	mkdir -p cache
 	curl -LsSf '$(EXTENSION_FUNCTIONS_URL)' -o $@
 
+cache/$(CSV_TABLE):
+	mkdir -p cache
+	cp '$(CSV_TABLE_URL)' $@
+
 ## sqlite-src
 .PHONY: sqlite-src
-sqlite-src: sqlite-src/$(SQLITE_AMALGAMATION) sqlite-src/$(SQLITE_AMALGAMATION)/$(EXTENSION_FUNCTIONS)
+sqlite-src: sqlite-src/$(SQLITE_AMALGAMATION) sqlite-src/$(SQLITE_AMALGAMATION)/$(EXTENSION_FUNCTIONS)\
+ 	sqlite-src/$(SQLITE_AMALGAMATION)/$(CSV_TABLE)
 
-sqlite-src/$(SQLITE_AMALGAMATION): cache/$(SQLITE_AMALGAMATION).zip sqlite-src/$(SQLITE_AMALGAMATION)/$(EXTENSION_FUNCTIONS)
+sqlite-src/$(SQLITE_AMALGAMATION): cache/$(SQLITE_AMALGAMATION).zip sqlite-src/$(SQLITE_AMALGAMATION)/$(EXTENSION_FUNCTIONS)\
+	sqlite-src/$(SQLITE_AMALGAMATION)/$(CSV_TABLE)
 	mkdir -p sqlite-src/$(SQLITE_AMALGAMATION)
 	echo '$(SQLITE_AMALGAMATION_ZIP_SHA3)  ./cache/$(SQLITE_AMALGAMATION).zip' > cache/check.txt
 	sha3sum -c cache/check.txt
@@ -189,6 +206,11 @@ sqlite-src/$(SQLITE_AMALGAMATION)/$(EXTENSION_FUNCTIONS): cache/$(EXTENSION_FUNC
 	sha1sum -c cache/check.txt
 	cp 'cache/$(EXTENSION_FUNCTIONS)' $@
 
+sqlite-src/$(SQLITE_AMALGAMATION)/$(CSV_TABLE): cache/$(CSV_TABLE)
+	mkdir -p sqlite-src/$(SQLITE_AMALGAMATION)
+	echo '$(CSV_TABLE_SHA1)  ./cache/$(CSV_TABLE)' > cache/check.txt
+	#sha1sum -c cache/check.txt
+	cp 'cache/$(CSV_TABLE)' $@
 
 .PHONY: clean
 clean:

@@ -3,10 +3,11 @@ var outputElm = document.getElementById('output');
 var errorElm = document.getElementById('error');
 var commandsElm = document.getElementById('commands');
 var dbFileElm = document.getElementById('dbfile');
+var csvFileElm = document.getElementById('csvfile');
 var savedbElm = document.getElementById('savedb');
 
 // Start the worker in which sql.js will run
-var worker = new Worker("../../dist/worker.sql-wasm.js");
+var worker = new Worker("../../dist/worker.sql-asm.js");
 worker.onerror = error;
 
 // Open a database
@@ -112,7 +113,29 @@ dbFileElm.onchange = function () {
 			worker.postMessage({ action: 'open', buffer: r.result }, [r.result]);
 		}
 		catch (exception) {
-			worker.postMessage({ action: 'open', buffer: r.result });
+			worker.postMessage({ action: 'open', buffer: r.result});
+		}
+	}
+	r.readAsArrayBuffer(f);
+}
+
+// Load a db from a file
+csvFileElm.onchange = function () {
+	var f = csvFileElm.files[0];
+	var r = new FileReader();
+	r.onload = function () {
+		worker.onmessage = function () {
+			toc("Loading database from csv file");
+			// Show the schema of the loaded database
+			editor.setValue("SELECT count(*)\nFROM temp.\"" + f.name + "\";\n");
+			execEditorContents();
+		};
+		tic();
+		try {
+			worker.postMessage({ action: 'createCSVTable', buffer: r.result, fileName: f.name }, [r.result]);
+		}
+		catch (exception) {
+			worker.postMessage({ action: 'createCSVTable', buffer: r.result, fileName: f.name });
 		}
 	}
 	r.readAsArrayBuffer(f);
