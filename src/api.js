@@ -851,13 +851,29 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         if (data == null) {
             throw "No data for CSV file";
         }
-        this.filename = "csvfile_" + (0xffffffff * Math.random() >>> 0);
+        let tempCSVFile = "csvfile_" + (0xffffffff * Math.random() >>> 0);
         if (data != null) {
-            FS.createDataFile("/", this.filename, data, true, true);
+            FS.createDataFile("/", tempCSVFile, data, true, true);
         }
-        let sql = "CREATE VIRTUAL TABLE temp.\"" + fileName + "\" USING csv(filename='" + this.filename + "', header=true);"
+
+        //Create the virtual table
+        postMessage({ progress: "Loading CSV File" });
+        let sql = "CREATE VIRTUAL TABLE temp.\"" + fileName + "\" USING csv(filename='" + tempCSVFile + "', header=true);"
+        this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
+
+        // Load the virtual table to a real table
+        let tableName = "Table" + fileName.replace(/ /g, "").replace(".csv","");
+        postMessage({ progress: "Converting file " + fileName + " to table '" + tableName + "'. This may take a" +
+            " couple of minutes for files over 100MB in size."});
+        sql = "CREATE TABLE " + tableName + " AS\n SELECT * FROM temp.\"" + fileName + "\";";
+        this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
+
+        postMessage({ progress: "Cleaning up" });
+        // Drop the virtual table
+        sql = "DROP TABLE temp.\"" + fileName + "\";";
         this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
     }
+
 
     /** Execute an SQL query, ignoring the rows it returns.
     @param {string} sql a string containing some SQL text to execute

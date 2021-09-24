@@ -7,7 +7,7 @@ var csvFileElm = document.getElementById('csvfile');
 var savedbElm = document.getElementById('savedb');
 
 // Start the worker in which sql.js will run
-var worker = new Worker("../../dist/worker.sql-asm.js");
+var worker = new Worker("../../dist/worker.sql-asm-debug.js");
 worker.onerror = error;
 
 // Open a database
@@ -124,10 +124,14 @@ csvFileElm.onchange = function () {
 	var f = csvFileElm.files[0];
 	var r = new FileReader();
 	r.onload = function () {
-		worker.onmessage = function () {
+		worker.onmessage = function (e) {
+      if (e.data.progress) {
+        outputElm.textContent = e.data.progress;
+        return;
+      }
 			toc("Loading database from csv file");
 			// Show the schema of the loaded database
-			editor.setValue("SELECT count(*)\nFROM temp.\"" + f.name + "\";\n");
+			editor.setValue("SELECT `name`, `sql`\n  FROM `sqlite_master`\n  WHERE type='table';");
 			execEditorContents();
 		};
 		tic();
