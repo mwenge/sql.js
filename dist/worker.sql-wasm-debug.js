@@ -325,6 +325,11 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         "number",
         ["number"]
     );
+    var registerVSVTable = cwrap(
+        "RegisterVSVTable",
+        "number",
+        ["number"]
+    );
 
     /**
     * @classdesc
@@ -918,6 +923,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         this.db = getValue(apiTemp, "i32");
         registerExtensionFunctions(this.db);
         registerCSVTable(this.db);
+        registerVSVTable(this.db);
         // A list of all prepared statements of the database
         this.statements = {};
         // A list of all user function of the database
@@ -941,11 +947,57 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         if (data == null) {
             throw "No data for CSV file";
         }
-        this.filename = "csvfile_" + (0xffffffff * Math.random() >>> 0);
+        let tempCSVFile = "csvfile_" + (0xffffffff * Math.random() >>> 0);
         if (data != null) {
-            FS.createDataFile("/", this.filename, data, true, true);
+            FS.createDataFile("/", tempCSVFile, data, true, true);
         }
-        let sql = "CREATE VIRTUAL TABLE temp.\"" + fileName + "\" USING csv(filename='" + this.filename + "', header=true);"
+
+        //Create the virtual table
+        postMessage({ progress: "Loading CSV File" });
+        let sql = "CREATE VIRTUAL TABLE temp.\"" + fileName + "\" USING csv(filename='" + tempCSVFile + "', header=true);"
+        this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
+
+        // Load the virtual table to a real table
+        let tableName = "Table" + fileName.replace(/ /g, "").replace(".csv","");
+        postMessage({ progress: "Converting file " + fileName + " to table '" + tableName + "'. This may take a" +
+            " couple of minutes for files over 100MB in size."});
+        sql = "CREATE TABLE " + tableName + " AS\n SELECT * FROM temp.\"" + fileName + "\";";
+        this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
+
+        postMessage({ progress: "Cleaning up" });
+        // Drop the virtual table
+        sql = "DROP TABLE temp.\"" + fileName + "\";";
+        this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
+    }
+
+    Database.prototype["createVSVTable"] = function createVSVTable(data, fileName, separator) {
+        if (!this.db) {
+            throw "Database closed";
+        }
+        if (data == null) {
+            throw "No data for VSV file";
+        }
+        let tempVSVFile = "vsvfile_" + (0xffffffff * Math.random() >>> 0);
+        if (data != null) {
+            FS.createDataFile("/", tempVSVFile, data, true, true);
+        }
+
+        //Create the virtual table
+        postMessage({ progress: "Loading VSV File" });
+        let sql = "CREATE VIRTUAL TABLE temp.\"" + fileName + "\" USING vsv(filename='" + tempVSVFile +
+            "', fsep='\\x" + separator + "', header=true, affinity=integer);"
+        this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
+
+        // Load the virtual table to a real table
+        let tableName = "Table" + fileName.replace(/ /g, "").replace(".","");
+        postMessage({ progress: "Converting file " + fileName + " to table '" + tableName + "'. This may take a" +
+            " couple of minutes for files over 100MB in size."});
+        sql = "CREATE TABLE " + tableName + " AS\n SELECT * FROM temp.\"" + fileName + "\";";
+        this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
+
+        postMessage({ progress: "Cleaning up" });
+        // Drop the virtual table
+        sql = "DROP TABLE temp.\"" + fileName + "\";";
         this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
     }
 
@@ -6591,6 +6643,9 @@ var _RegisterExtensionFunctions = Module["_RegisterExtensionFunctions"] = create
 var _RegisterCSVTable = Module["_RegisterCSVTable"] = createExportWrapper("RegisterCSVTable");
 
 /** @type {function(...*):?} */
+var _RegisterVSVTable = Module["_RegisterVSVTable"] = createExportWrapper("RegisterVSVTable");
+
+/** @type {function(...*):?} */
 var _fflush = Module["_fflush"] = createExportWrapper("fflush");
 
 /** @type {function(...*):?} */
@@ -7102,6 +7157,17 @@ function onModuleReady(SQL) {
             return postMessage({
                 id: data["id"],
                 results: db.createCSVTable(buff && new Uint8Array(buff), fileName)
+            });
+        case "createVSVTable":
+            if (db === null) {
+                createDb();
+            }
+            buff = data["buffer"];
+            fileName = data["fileName"];
+            sep = data["separator"];
+            return postMessage({
+                id: data["id"],
+                results: db.createVSVTable(buff && new Uint8Array(buff), fileName, sep)
             });
         case "exec":
             if (db === null) {

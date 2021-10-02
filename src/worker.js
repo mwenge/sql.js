@@ -34,6 +34,17 @@ function onModuleReady(SQL) {
                 id: data["id"],
                 results: db.createCSVTable(buff && new Uint8Array(buff), fileName)
             });
+        case "createVSVTable":
+            if (db === null) {
+                createDb();
+            }
+            buff = data["buffer"];
+            fileName = data["fileName"];
+            sep = data["separator"];
+            return postMessage({
+                id: data["id"],
+                results: db.createVSVTable(buff && new Uint8Array(buff), fileName, sep)
+            });
         case "exec":
             if (db === null) {
                 createDb();

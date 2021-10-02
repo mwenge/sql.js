@@ -20,6 +20,11 @@ CSV_TABLE = csv.c
 CSV_TABLE_URL = csv/csv.c
 CSV_TABLE_SHA1 = 0e5ccb38b0d88d362364af45d399b98c9f735c26
 
+# Note that extension-functions.c hasn't been updated since 2010-02-06, so likely doesn't need to be updated
+VSV_TABLE = vsv.c
+VSV_TABLE_URL = csv/vsv.c
+VSV_TABLE_SHA1 = 0e5ccb38b0d88d362364af45d399b98c9f735c26
+
 EMCC=emcc
 
 CFLAGS = \
@@ -67,7 +72,7 @@ EMFLAGS_DEBUG = \
 	-s ASSERTIONS=1 \
 	-O1
 
-BITCODE_FILES = out/sqlite3.bc out/extension-functions.bc out/csv.bc
+BITCODE_FILES = out/sqlite3.bc out/extension-functions.bc out/csv.bc out/vsv.bc
 
 OUTPUT_WRAPPER_FILES = src/shell-pre.js src/shell-post.js
 
@@ -167,6 +172,12 @@ out/csv.bc: sqlite-src/$(SQLITE_AMALGAMATION)
 	# Generate llvm bitcode
 	$(EMCC) $(CFLAGS) -c sqlite-src/$(SQLITE_AMALGAMATION)/csv.c -o $@
 
+# Since the extension-functions.c includes other headers in the sqlite_amalgamation, we declare that this depends on more than just extension-functions.c
+out/vsv.bc: sqlite-src/$(SQLITE_AMALGAMATION)
+	mkdir -p out
+	# Generate llvm bitcode
+	$(EMCC) $(CFLAGS) -c sqlite-src/$(SQLITE_AMALGAMATION)/vsv.c -o $@
+
 # TODO: This target appears to be unused. If we re-instatate it, we'll need to add more files inside of the JS folder
 # module.tar.gz: test package.json AUTHORS README.md dist/sql-asm.js
 # 	tar --create --gzip $^ > $@
@@ -184,13 +195,19 @@ cache/$(CSV_TABLE):
 	mkdir -p cache
 	cp '$(CSV_TABLE_URL)' $@
 
+cache/$(VSV_TABLE):
+	mkdir -p cache
+	cp '$(VSV_TABLE_URL)' $@
+
 ## sqlite-src
 .PHONY: sqlite-src
 sqlite-src: sqlite-src/$(SQLITE_AMALGAMATION) sqlite-src/$(SQLITE_AMALGAMATION)/$(EXTENSION_FUNCTIONS)\
- 	sqlite-src/$(SQLITE_AMALGAMATION)/$(CSV_TABLE)
+ 	sqlite-src/$(SQLITE_AMALGAMATION)/$(CSV_TABLE)\
+ 	sqlite-src/$(SQLITE_AMALGAMATION)/$(VSV_TABLE)
 
 sqlite-src/$(SQLITE_AMALGAMATION): cache/$(SQLITE_AMALGAMATION).zip sqlite-src/$(SQLITE_AMALGAMATION)/$(EXTENSION_FUNCTIONS)\
-	sqlite-src/$(SQLITE_AMALGAMATION)/$(CSV_TABLE)
+	sqlite-src/$(SQLITE_AMALGAMATION)/$(CSV_TABLE)\
+	sqlite-src/$(SQLITE_AMALGAMATION)/$(VSV_TABLE)
 	mkdir -p sqlite-src/$(SQLITE_AMALGAMATION)
 	echo '$(SQLITE_AMALGAMATION_ZIP_SHA3)  ./cache/$(SQLITE_AMALGAMATION).zip' > cache/check.txt
 	sha3sum -c cache/check.txt
@@ -211,6 +228,12 @@ sqlite-src/$(SQLITE_AMALGAMATION)/$(CSV_TABLE): cache/$(CSV_TABLE)
 	echo '$(CSV_TABLE_SHA1)  ./cache/$(CSV_TABLE)' > cache/check.txt
 	#sha1sum -c cache/check.txt
 	cp 'cache/$(CSV_TABLE)' $@
+
+sqlite-src/$(SQLITE_AMALGAMATION)/$(VSV_TABLE): cache/$(VSV_TABLE)
+	mkdir -p sqlite-src/$(SQLITE_AMALGAMATION)
+	echo '$(VSV_TABLE_SHA1)  ./cache/$(VSV_TABLE)' > cache/check.txt
+	#sha1sum -c cache/check.txt
+	cp 'cache/$(VSV_TABLE)' $@
 
 .PHONY: clean
 clean:
