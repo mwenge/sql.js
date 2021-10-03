@@ -1,56 +1,119 @@
-var execBtn = document.getElementById("execute");
-var outputElm = document.getElementById('output');
-var errorElm = document.getElementById('error');
-var commandsElm = document.getElementById('commands');
 var dbFileElm = document.getElementById('dbfile');
 var csvFileElm = document.getElementById('csvfile');
 var vsvFileElm = document.getElementById('vsvfile');
 var savedbElm = document.getElementById('savedb');
 var sidebarElm = document.getElementById('sidebar');
+var cellsContainer = document.getElementById("container");
 
+
+hotkeys('ctrl+b', function (event, handler){
+    switch (handler.key) {
+            case 'ctrl+b':
+              createCell(cellsContainer, 5);
+              break;
+            default: break;
+          }
+});
 // Start the worker in which sql.js will run
 var worker = new Worker("../../dist/worker.sql-asm-debug.js");
-worker.onerror = error;
 
 // Open a database
 worker.postMessage({ action: 'open' });
 
-// Connect to the HTML element we 'print' to
-function print(text) {
-	outputElm.innerHTML = text.replace(/\n/g, '<br>');
-}
-function error(e) {
-	console.log(e);
-	errorElm.style.height = '2em';
-	errorElm.textContent = e.message;
-}
 
-function noerror() {
-	errorElm.style.height = '0';
-}
 
-// Run a command in the database
-function execute(commands) {
-	tic();
-	worker.onmessage = function (event) {
-		var results = event.data.results;
-		toc("Executing SQL");
-		if (!results) {
-			error({message: event.data.error});
-			return;
-		}
+// Create a cell for entering commands
+var createCell = function () {
+	return function (c,id) {
+    // Connect to the HTML element we 'print' to
+    function print(text) {
+      output.innerHTML = text.replace(/\n/g, '<br>');
+    }
+    function error(e) {
+      console.log(e);
+      errorElm.style.height = '2em';
+      errorElm.textContent = e.message;
+    }
 
-		tic();
-		outputElm.innerHTML = "";
-    console.log(results);
-		for (var i = 0; i < results.length; i++) {
-			outputElm.appendChild(tableCreate(results[i].columns, results[i].values));
-		}
-		toc("Displaying results");
+    function noerror() {
+      errorElm.style.height = '0';
+    }
+    // Run a command in the database
+    function execute(commands) {
+      tic();
+      worker.onerror = error;
+      worker.onmessage = function (event) {
+        var results = event.data.results;
+        toc("Executing SQL");
+        if (!results) {
+          error({message: event.data.error});
+          return;
+        }
+
+        tic();
+        output.innerHTML = "";
+        console.log(results);
+        for (var i = 0; i < results.length; i++) {
+          output.appendChild(tableCreate(results[i].columns, results[i].values));
+        }
+        toc("Displaying results");
+      }
+      worker.postMessage({ action: 'exec', sql: commands });
+      output.textContent = "Fetching results...";
+    }
+
+    // Execute the commands when the button is clicked
+    function execEditorContents() {
+      noerror()
+      execute(editor.getValue() + ';');
+    }
+    function addCell() {
+      createCell(container.parentElement,id+1);
+    }
+
+		var container = document.createElement('div');
+    container.id = id;
+
+    // Add the command pane
+		var commandsElm = document.createElement('textarea');
+    commandsElm.textContent = 'Select * from table';
+    container.appendChild(commandsElm);
+    c.appendChild(container);
+
+    // Add syntax highlihjting to the textarea
+    var editor = CodeMirror.fromTextArea(commandsElm, {
+      mode: 'text/x-mysql',
+      viewportMargin: Infinity,
+      indentWithTabs: true,
+      smartIndent: true,
+      lineNumbers: true,
+      matchBrackets: true,
+      autofocus: true,
+      extraKeys: {
+        "Ctrl-Enter": execEditorContents,
+        "Ctrl-S": savedb,
+        "Ctrl-B": addCell,
+      }
+    });
+
+    // Add the tips line
+		var tipsElm = document.createElement('span');
+    tipsElm.className = "tips";
+    tipsElm.textContent = "Press Ctrl-Enter to execute, Ctrl-B to add a new cell.";
+    container.appendChild(tipsElm);
+
+    // Add the error pane
+		var errorElm = document.createElement('div');
+    errorElm.className = "error";
+    container.appendChild(errorElm);
+
+    // Add the output pane
+		var output = document.createElement('pre');
+    output.className = "output";
+    container.appendChild(output);
 	}
-	worker.postMessage({ action: 'exec', sql: commands });
-	outputElm.textContent = "Fetching results...";
-}
+}();
+createCell(cellsContainer,1);
 
 // Create an HTML table
 var tableCreate = function () {
@@ -69,13 +132,6 @@ var tableCreate = function () {
 	}
 }();
 
-// Execute the commands when the button is clicked
-function execEditorContents() {
-	noerror()
-	execute(editor.getValue() + ';');
-}
-execBtn.addEventListener("click", execEditorContents, true);
-
 // Performance measurement functions
 var tictime;
 if (!window.performance || !performance.now) { window.performance = { now: Date.now } }
@@ -85,21 +141,6 @@ function toc(msg) {
 	console.log((msg || 'toc') + ": " + dt + "ms");
 }
 
-// Add syntax highlihjting to the textarea
-var editor = CodeMirror.fromTextArea(commandsElm, {
-	mode: 'text/x-mysql',
-	viewportMargin: Infinity,
-	indentWithTabs: true,
-	smartIndent: true,
-	lineNumbers: true,
-	matchBrackets: true,
-	autofocus: true,
-	extraKeys: {
-		"Ctrl-Enter": execEditorContents,
-		"Ctrl-S": savedb,
-	}
-});
-
 // Load a db from a file
 dbFileElm.onchange = function () {
 	var f = dbFileElm.files[0];
@@ -107,9 +148,7 @@ dbFileElm.onchange = function () {
 	r.onload = function () {
 		worker.onmessage = function () {
 			toc("Loading database from file");
-			// Show the schema of the loaded database
-			editor.setValue("SELECT `name`, `sql`\n  FROM `sqlite_master`\n  WHERE type='table';");
-			execEditorContents();
+      updateSidebar();
 		};
 		tic();
 		try {
@@ -209,7 +248,7 @@ vsvFileElm.onchange = function () {
 	r.onload = function () {
 		worker.onmessage = function (e) {
       if (e.data.progress) {
-        outputElm.textContent = e.data.progress;
+        sidebarElm.textContent = e.data.progress;
         return;
       }
 			toc("Loading database from vsv file");
@@ -242,7 +281,7 @@ csvFileElm.onchange = function () {
 	r.onload = function () {
 		worker.onmessage = function (e) {
       if (e.data.progress) {
-        outputElm.textContent = e.data.progress;
+        sidebarElm.textContent = e.data.progress;
         return;
       }
 			toc("Loading database from csv file");
@@ -300,6 +339,10 @@ function updateSidebar() {
 		}
 	}();
 
+  function error(e) {
+    console.log(e);
+    sidebarElm.textContent = e.message;
+  }
 
   function populateSidebar(e) {
     var results = e.data.results;
@@ -316,6 +359,7 @@ function updateSidebar() {
 		for (t of tables) {
 				let fields = rows.filter(x => x[0] == t).map(x => [x[1],x[2]]);
 				sidebar.appendChild(tableCreate(t, fields));
+				sidebar.appendChild(document.createElement("br"));
 		}
   }
   // Run a command in the database
@@ -324,7 +368,6 @@ function updateSidebar() {
     worker.onmessage = populateSidebar;
     worker.postMessage({ action: 'exec', sql: commands });
   }
-	noerror()
   let schemaSQL = "SELECT DISTINCT m.name, ii.name, ii.type " +
     "  FROM sqlite_schema AS m, " +
     "       pragma_table_info(m.name) AS ii " +

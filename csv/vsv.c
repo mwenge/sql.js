@@ -1594,7 +1594,7 @@ static int vsvtabColumn(
                     length = vsv_utf8IsValid(pCur->azVal[i]);
                     if (length == dLen)
                     {
-                        sqlite3_result_text(ctx, pCur->azVal[i], -1, SQLITE_TRANSIENT);
+                        sqlite3_result_text(ctx, pCur->azVal[i], dLen, SQLITE_TRANSIENT);
                     }
                     else
                     {

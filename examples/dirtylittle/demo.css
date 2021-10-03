@@ -1,3 +1,9 @@
+@font-face {
+  font-family: 'ABCFavoritMono';
+  font-style: normal;
+  font-weight: 400;
+  src: url(ABCFavoritMono-Light.woff) format('truetype');
+}
 html {
 	margin:auto;
   margin-top: 10vh;
@@ -13,18 +19,24 @@ html {
 }
 
 .sidebar {
+  font-family: 'ABCFavoritMono';
+  font-size: 0.6vw;
   position: fixed;
   top: 10vh;
   right: 0px;
   height: 90vh;
   width: 18%;
 }
-
+.sidebar>table {
+  border: none;
+  border-collapse: collapse;
+}
 body{
-	border: 1px solid black;
 	padding: 10px 20px;
-	box-shadow: 5px 0px 30px #000;
-	border-radius: 8px;
+}
+
+.tips {
+  font-size: 0.5vw;
 }
 
 h1 {
@@ -75,11 +87,12 @@ h1 {
 	margin: 15px;
 }
 
-#output {
+.output {
 	overflow: auto;
+  max-height: 40vh;
 }
 
-table {
+.output>table {
 	width:auto;
 	margin:auto;
 	border:1px solid black;
@@ -87,7 +100,10 @@ table {
  	margin-bottom:10px;
 }
 
-th, td {
+.output>table>thead>th {
+	border:1px solid #777;
+}
+.output>table>tbody>tr>td {
 	border:1px solid #777;
 }
 
