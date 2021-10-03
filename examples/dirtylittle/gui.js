@@ -227,20 +227,27 @@ vsvFileElm.onchange = function () {
     return toHex(guessSeparatorFromData(d));
   }
 
+  // Take all the sheets in a workbook and return them as an
+  // array of [csvdata, tablename]
   function convertExcelToCSV(d, filename) {
     var data = new Uint8Array(d);
     var wb = XLSX.read(data,{type:'array'});
-    var csv = XLSX.write(wb,{type:'array',bookType:'csv'});
-    return new Uint8Array(csv);
+    let sheets = [];
+		for (let i = 0, l = wb.SheetNames.length; i < l; i += 1) {
+      let s = wb.Sheets[wb.SheetNames[i]];
+      var csv = XLSX.utils.sheet_to_csv(s, { type:'array', header: 1 });
+      sheets.push([enc.encode(csv), filename + wb.SheetNames[i]]);
+		}
+    return sheets;
   }
 
   function getDataAndSeparator(d, filename) {
     let suff = filename.slice(-3);
     if (["xls", "lsx"].includes(suff)) {
-      return [convertExcelToCSV(d), '2c'];
+      return [convertExcelToCSV(d, filename), '2c'];
     }
     let sep = guessSeparator(filename, d);
-    return [d, sep];
+    return [[[d, filename]], sep];
   }
 
 	var f = vsvFileElm.files[0];
@@ -263,12 +270,14 @@ vsvFileElm.onchange = function () {
 			toc("Can't determine the separator from the file suffix or contents.");
       return;
     }
-		try {
-			worker.postMessage({ action: 'createVSVTable', buffer: data, fileName: f.name, separator: sep }, [data]);
-		}
-		catch (exception) {
-			worker.postMessage({ action: 'createVSVTable', buffer: data, fileName: f.name, separator: sep });
-		}
+    for (let d of data) {
+      try {
+        worker.postMessage({ action: 'createVSVTable', buffer: d[0], fileName: d[1], separator: sep }, [d[0]]);
+      }
+      catch (exception) {
+        worker.postMessage({ action: 'createVSVTable', buffer: d[0], fileName: d[1], separator: sep });
+      }
+    }
 	}
 	r.readAsArrayBuffer(f);
 }

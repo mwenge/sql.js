@@ -17,6 +17,17 @@ html {
   height: 10vh;
   width: 100%;
 }
+.logo {
+  font-family: 'ABCFavoritMono';
+  font-size: 0.6vw;
+  font-weight: bold;
+  display: inline-block;
+  width: 1vw;
+  padding: 0.2vw;
+  color: white;
+  background-color: black;
+  vertical-align: center;
+}
 
 .sidebar {
   font-family: 'ABCFavoritMono';
