@@ -1,8 +1,11 @@
 var dbFileElm = document.getElementById('dbfile');
 var csvFileElm = document.getElementById('csvfile');
 var vsvFileElm = document.getElementById('vsvfile');
-var savedbElm = document.getElementById('savedb');
+var vsvButton = document.getElementById('vsvbutton');
+var dbButton = document.getElementById('dbbutton');
+var saveButton = document.getElementById('savebutton');
 var sidebarElm = document.getElementById('sidebar');
+var statusElm = document.getElementById('status');
 var cellsContainer = document.getElementById("container");
 
 
@@ -57,6 +60,7 @@ var createCell = function () {
           output.appendChild(tableCreate(results[i].columns, results[i].values));
         }
         toc("Displaying results");
+        updateSidebar();
       }
       worker.postMessage({ action: 'exec', sql: commands });
       output.textContent = "Fetching results...";
@@ -69,6 +73,12 @@ var createCell = function () {
     }
     function addCell() {
       createCell(container.parentElement,id+1);
+    }
+    function deleteCell() {
+      if (id == 1) {
+        return;
+      }
+      container.parentElement.removeChild(container);
     }
 
 		var container = document.createElement('div');
@@ -93,13 +103,14 @@ var createCell = function () {
         "Ctrl-Enter": execEditorContents,
         "Ctrl-S": savedb,
         "Ctrl-B": addCell,
+        "Ctrl-D": deleteCell,
       }
     });
 
     // Add the tips line
 		var tipsElm = document.createElement('span');
     tipsElm.className = "tips";
-    tipsElm.textContent = "Press Ctrl-Enter to execute, Ctrl-B to add a new cell.";
+    tipsElm.textContent = "Press Ctrl-Enter to execute, Ctrl-B to add a new cell, Ctrl-D to delete this cell.";
     container.appendChild(tipsElm);
 
     // Add the error pane
@@ -141,6 +152,10 @@ function toc(msg) {
 	console.log((msg || 'toc') + ": " + dt + "ms");
 }
 
+// Load a file into our DB by guessing the separators it uses.
+dbButton.onclick = function () {
+  dbFileElm.click();
+};
 // Load a db from a file
 dbFileElm.onchange = function () {
 	var f = dbFileElm.files[0];
@@ -169,6 +184,9 @@ const suffixToSep = new Map([
 var enc = new TextEncoder(); // always utf-8
 
 // Load a file into our DB by guessing the separators it uses.
+vsvButton.onclick = function () {
+  vsvFileElm.click();
+};
 vsvFileElm.onchange = function () {
   // Returns the guessed separator as a decimal integer, e.g. '\t' as 9.
   // Returns -1 if we can't figure out the separator used in the file.
@@ -255,7 +273,7 @@ vsvFileElm.onchange = function () {
 	r.onload = function () {
 		worker.onmessage = function (e) {
       if (e.data.progress) {
-        sidebarElm.textContent = e.data.progress;
+        statusElm.textContent = e.data.progress;
         return;
       }
 			toc("Loading database from vsv file");
@@ -290,7 +308,7 @@ csvFileElm.onchange = function () {
 	r.onload = function () {
 		worker.onmessage = function (e) {
       if (e.data.progress) {
-        sidebarElm.textContent = e.data.progress;
+        statusElm.textContent = e.data.progress;
         return;
       }
 			toc("Loading database from csv file");
@@ -308,6 +326,10 @@ csvFileElm.onchange = function () {
 	r.readAsArrayBuffer(f);
 }
 
+// Load a file into our DB by guessing the separators it uses.
+saveButton.onclick = function () {
+  savedb();
+};
 // Save the db to a file
 function savedb() {
 	worker.onmessage = function (event) {
@@ -328,7 +350,6 @@ function savedb() {
 	tic();
 	worker.postMessage({ action: 'export' });
 }
-savedbElm.addEventListener("click", savedb, true);
 
 function updateSidebar() {
   // Create an HTML table
@@ -350,7 +371,7 @@ function updateSidebar() {
 
   function error(e) {
     console.log(e);
-    sidebarElm.textContent = e.message;
+    statusElm.textContent = e.message;
   }
 
   function populateSidebar(e) {

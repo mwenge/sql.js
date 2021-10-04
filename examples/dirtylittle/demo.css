@@ -6,27 +6,39 @@
 }
 html {
 	margin:auto;
-  margin-top: 10vh;
+  margin-top: 5vh;
   margin-left: 1vw;
 	width:80%;
 }
 
+.status {
+  background-color: white;
+  height: 3vh;
+  z-index: 99999;
+  font-family: 'ABCFavoritMono';
+  font-size: 0.6vw;
+  color: blue;
+}
 .banner {
   position: fixed;
-  top: 0;
-  height: 10vh;
-  width: 100%;
+  top: 0px;
+  left: 20px;
+  right: 40px;
+  height: 5vh;
+  width: 90%;
+  background-color: white;
+  z-index: 99999;
 }
 .logo {
   font-family: 'ABCFavoritMono';
   font-size: 0.6vw;
   font-weight: bold;
   display: inline-block;
-  width: 1vw;
-  padding: 0.2vw;
+  padding: 0 0.4vw;
   color: white;
   background-color: black;
   vertical-align: center;
+  height: 5vh;
 }
 
 .sidebar {
@@ -56,16 +68,21 @@ h1 {
 	margin: 0 0 30px;
 }
 
+.fileselect {
+  margin: 0 0.5vw;
+  display: inline-block;
+  height: 5vh;
+}
 .button {
-	color: #333;
-	background: linear-gradient(#eee, #ddd);
+	color: white;
+	background: linear-gradient(#000, #222);
+  background-color: black;
 	border: 1px solid #222;
-	border-radius: 3px;
 	padding: 7px;
-	margin-right: 5px;
 	transition: .3s;
 	font-family: ubuntu, sans-serif;
-	font-size: 1em;
+	font-size: 1vw;
+  height: 5vh;
 }
 
 .button:active {

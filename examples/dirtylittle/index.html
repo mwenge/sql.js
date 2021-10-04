@@ -19,12 +19,42 @@
       <div>LTL</div>
       <div>SQL</div>
     </div>
-    <label class="button">Import File<input type='file' id='vsvfile'></label>
-    <button id='savedb' class="button">Export</button>
-    <label class="button">Load an SQLite database file: <input type='file' id='dbfile'></label>
-    <label class="button">Load a CSV file: <input type='file' id='csvfile'></label>
+    <input class="button" type='file' id='csvfile' style="display:none">
+    <div class="fileselect" style="float:right;" id="savebutton">
+      <div class="logo" style="float:left;">
+        <input class="button" type="button" value="➥">
+      </div>
+      <div class="logo" style="float:left;">
+        <div>EXPORT</div>
+        <div>SQLITE</div>
+        <div>DB</div>
+      </div>
+    </div>
+    <div class="fileselect" style="float:right;" id="dbbutton">
+      <input class="button" type='file' id='dbfile' style="display:none">
+      <div class="logo" style="float:left;">
+        <input class="button" type="button" value="+">
+      </div>
+      <div class="logo" style="float:left;">
+        <div>IMPORT</div>
+        <div>SQLITE</div>
+        <div>DB</div>
+      </div>
+    </div>
+    <div class="fileselect" style="float:right;" id="vsvbutton">
+      <input class="button" type='file' id='vsvfile' style="display:none">
+      <div class="logo" style="float:left;">
+        <input class="button" type="button" value="+">
+      </div>
+      <div class="logo" style="float:left;">
+        <div>CSV</div>
+        <div>TXT</div>
+        <div>XLS</div>
+      </div>
+    </div>
   </div>
   <div class="sidebar" id="sidebar"></div>
+  <header class="status" id="status"></header>
   <main>
     <div id="container"></div>
   </main>
