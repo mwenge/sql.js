@@ -887,13 +887,13 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         if (data == null) {
             throw "No data for VSV file";
         }
+        postMessage({ progress: "Loading " + fileName + "..." });
         let tempVSVFile = "vsvfile_" + (0xffffffff * Math.random() >>> 0);
         if (data != null) {
             FS.createDataFile("/", tempVSVFile, data, true, true);
         }
 
         //Create the virtual table
-        postMessage({ progress: "Loading " + fileName + "..." });
         let sql = "CREATE VIRTUAL TABLE \"" + fileName + "\" USING vsv(filename='" + tempVSVFile +
             "', fsep='\\x" + separator + "', header=true, affinity=integer);"
         this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));

@@ -23,7 +23,36 @@ var worker = new Worker("../../dist/worker.sql-asm-debug.js");
 // Open a database
 worker.postMessage({ action: 'open' });
 
-
+// Add column names and table names to Codemirror's hints.
+let hintWords=['SELECT']; // custom hints
+const jsHinter = CodeMirror.hint.sql; // copy default hinter for JavaScript
+CodeMirror.hint.sql = function (editor) {
+    // Find the word fragment near cursor that needs auto-complete...
+    const cursor = editor.getCursor();
+    const currentLine = editor.getLine(cursor.line);
+    let start = cursor.ch;
+    let end = start;
+    const rex=/[\w.]/; // a pattern to match any characters in our hint "words"
+    // Our hints include function calls, e.g. "trap.getSource()"
+    // so we search for word charcters (\w) and periods.
+    // First (and optional), find end of current "word" at cursor...
+    while (end < currentLine.length && rex.test(currentLine.charAt(end))) ++end;
+    // Find beginning of current "word" at cursor...
+    while (start && rex.test(currentLine.charAt(start - 1))) --start;
+    // Grab the current word, if any...
+    const curWord = start !== end && currentLine.slice(start, end);
+    // Get the default results object from the JavaScript hinter...
+    const dflt=jsHinter(editor);
+    // If the default hinter didn't hint, create a blank result for now...
+    const result = dflt || {list: []};
+    // Set the start/end of the replacement range...
+    result.to=CodeMirror.Pos(cursor.line, end);
+    result.from=CodeMirror.Pos(cursor.line, start);
+    // Add our custom hintWords to the list, if they start with the curWord...
+    hintWords.forEach(h=>{if (h.startsWith(curWord)) result.list.push(h);});
+    result.list.sort(); // sort the final list of hints
+    return result;
+};
 
 // Create a cell for entering commands
 var createCell = function () {
@@ -106,6 +135,7 @@ var createCell = function () {
       autofocus: true,
       extraKeys: {
         "Ctrl-Enter": execEditorContents,
+        "Ctrl-Space": "autocomplete",
         "Ctrl-S": savedb,
         "Ctrl-B": addCell,
         "Ctrl-D": deleteCell,
@@ -115,7 +145,7 @@ var createCell = function () {
     // Add the tips line
 		var tipsElm = document.createElement('span');
     tipsElm.className = "tips";
-    tipsElm.textContent = "Press Ctrl-Enter to execute, Ctrl-B to add a new cell, Ctrl-D to delete this cell.";
+    tipsElm.textContent = "Press Ctrl-Space to autocomplete, Ctrl-Enter to execute, Ctrl-B to add a new cell, Ctrl-D to delete this cell.";
     container.appendChild(tipsElm);
 
     // Add the error pane
@@ -371,6 +401,14 @@ function updateSidebar() {
 		}
 	}();
 
+	function addToCodeMirrorHints(vs) {
+		for (v of vs) {
+      if (!hintWords.includes(v)) {
+        hintWords.push(v);
+      }
+    }
+	}
+
   function populateSidebar(e) {
     if (e.data.progress) {
       statusElm.textContent = e.data.progress;
@@ -384,8 +422,10 @@ function updateSidebar() {
     // Each row is an array of the column values
     let rows = results[0].values;
 		let tables = [... new Set(rows.map(x => x[0]))];
+    addToCodeMirrorHints(tables);
 		for (t of tables) {
 				let fields = rows.filter(x => x[0] == t).map(x => [x[1],x[2]]);
+        addToCodeMirrorHints(fields.map(x => x[0]));
 				sidebar.appendChild(tableCreate(t, fields));
 				sidebar.appendChild(document.createElement("br"));
 		}
