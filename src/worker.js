@@ -41,9 +41,10 @@ function onModuleReady(SQL) {
             buff = data["buffer"];
             fileName = data["fileName"];
             sep = data["separator"];
+            quick = data["quick"];
             return postMessage({
                 id: data["id"],
-                results: db.createVSVTable(buff && new Uint8Array(buff), fileName, sep)
+                results: db.createVSVTable(buff && new Uint8Array(buff), fileName, sep, quick)
             });
         case "exec":
             if (db === null) {

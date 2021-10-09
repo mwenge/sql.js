@@ -3,16 +3,16 @@ var csvFileElm = document.getElementById('csvfile');
 var vsvFileElm = document.getElementById('vsvfile');
 var vsvButton = document.getElementById('vsvbutton');
 var dbButton = document.getElementById('dbbutton');
-var saveButton = document.getElementById('savebutton');
 var sidebarElm = document.getElementById('sidebar');
 var statusElm = document.getElementById('status');
 var cellsContainer = document.getElementById("container");
 
 
+var lastCellID = 0;
 hotkeys('ctrl+b', function (event, handler){
     switch (handler.key) {
             case 'ctrl+b':
-              createCell(cellsContainer, 5);
+              createCell(cellsContainer);
               break;
             default: break;
           }
@@ -27,7 +27,7 @@ worker.postMessage({ action: 'open' });
 
 // Create a cell for entering commands
 var createCell = function () {
-	return function (c,id) {
+	return function (c, sql) {
     // Connect to the HTML element we 'print' to
     function print(text) {
       output.innerHTML = text.replace(/\n/g, '<br>');
@@ -36,6 +36,7 @@ var createCell = function () {
       console.log(e);
       errorElm.style.height = '2em';
       errorElm.textContent = e.message;
+      output.textContent = "";
     }
 
     function noerror() {
@@ -43,6 +44,7 @@ var createCell = function () {
     }
     // Run a command in the database
     function execute(commands) {
+      statusElm.textContent = "";
       tic();
       worker.onerror = error;
       worker.onmessage = function (event) {
@@ -55,7 +57,6 @@ var createCell = function () {
 
         tic();
         output.innerHTML = "";
-        console.log(results);
         for (var i = 0; i < results.length; i++) {
           output.appendChild(tableCreate(results[i].columns, results[i].values));
         }
@@ -72,21 +73,25 @@ var createCell = function () {
       execute(editor.getValue() + ';');
     }
     function addCell() {
-      createCell(container.parentElement,id+1);
+      createCell(container.parentElement);
     }
     function deleteCell() {
-      if (id == 1) {
+      if (container.id == 1) {
         return;
       }
       container.parentElement.removeChild(container);
     }
 
 		var container = document.createElement('div');
-    container.id = id;
+    lastCellID++;
+    container.id = lastCellID;
 
     // Add the command pane
 		var commandsElm = document.createElement('textarea');
-    commandsElm.textContent = 'Select * from table';
+    if (!sql) {
+      sql = 'Select * from table';
+    }
+    commandsElm.textContent = sql;
     container.appendChild(commandsElm);
     c.appendChild(container);
 
@@ -124,7 +129,7 @@ var createCell = function () {
     container.appendChild(output);
 	}
 }();
-createCell(cellsContainer,1);
+createCell(cellsContainer);
 
 // Create an HTML table
 var tableCreate = function () {
@@ -271,29 +276,30 @@ vsvFileElm.onchange = function () {
 	var f = vsvFileElm.files[0];
 	var r = new FileReader();
 	r.onload = function () {
-		worker.onmessage = function (e) {
+    let [data, sep] = getDataAndSeparator(r.result, f.name);
+		if (sep == "-1") {
+			console.log("Can't determine the separator from the file suffix or contents.");
+      return;
+    }
+    worker.onmessage = function (e) {
       if (e.data.progress) {
         statusElm.textContent = e.data.progress;
         return;
       }
-			toc("Loading database from vsv file");
-			// Show the schema of the loaded database
+      // Show the schema of the loaded database
       updateSidebar();
-		};
-		tic();
-
-    let [data, sep] = getDataAndSeparator(r.result, f.name);
-		if (sep == "-1") {
-			console.log("Can't determine the separator from the file suffix or contents.");
-			toc("Can't determine the separator from the file suffix or contents.");
-      return;
-    }
+      if (e.data.vsvFileDetail) {
+        let sql = "SELECT * FROM \"" + e.data.vsvFileDetail.tableName + "\" LIMIT 10";
+        createCell(cellsContainer, sql);
+        return;
+      }
+    };
     for (let d of data) {
       try {
-        worker.postMessage({ action: 'createVSVTable', buffer: d[0], fileName: d[1], separator: sep }, [d[0]]);
+        worker.postMessage({ action: 'createVSVTable', buffer: d[0], fileName: d[1], separator: sep, quick: true }, [d[0]]);
       }
       catch (exception) {
-        worker.postMessage({ action: 'createVSVTable', buffer: d[0], fileName: d[1], separator: sep });
+        worker.postMessage({ action: 'createVSVTable', buffer: d[0], fileName: d[1], separator: sep, quick: true });
       }
     }
 	}
@@ -326,10 +332,6 @@ csvFileElm.onchange = function () {
 	r.readAsArrayBuffer(f);
 }
 
-// Load a file into our DB by guessing the separators it uses.
-saveButton.onclick = function () {
-  savedb();
-};
 // Save the db to a file
 function savedb() {
 	worker.onmessage = function (event) {
@@ -369,22 +371,18 @@ function updateSidebar() {
 		}
 	}();
 
-  function error(e) {
-    console.log(e);
-    statusElm.textContent = e.message;
-  }
-
   function populateSidebar(e) {
+    if (e.data.progress) {
+      statusElm.textContent = e.data.progress;
+    }
     var results = e.data.results;
-    if (!results) {
-      error({message: e.data.error});
+    if (!results || !results.length) {
       return;
     }
 
     sidebar.innerHTML = "";
     // Each row is an array of the column values
     let rows = results[0].values;
-    console.log(rows);
 		let tables = [... new Set(rows.map(x => x[0]))];
 		for (t of tables) {
 				let fields = rows.filter(x => x[0] == t).map(x => [x[1],x[2]]);

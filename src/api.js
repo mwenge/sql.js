@@ -880,7 +880,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
     }
 
-    Database.prototype["createVSVTable"] = function createVSVTable(data, fileName, separator) {
+    Database.prototype["createVSVTable"] = function createVSVTable(data, fileName, separator, quick) {
         if (!this.db) {
             throw "Database closed";
         }
@@ -893,10 +893,17 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         }
 
         //Create the virtual table
-        postMessage({ progress: "Loading VSV File" });
-        let sql = "CREATE VIRTUAL TABLE temp.\"" + fileName + "\" USING vsv(filename='" + tempVSVFile +
+        postMessage({ progress: "Loading " + fileName + "..." });
+        let sql = "CREATE VIRTUAL TABLE \"" + fileName + "\" USING vsv(filename='" + tempVSVFile +
             "', fsep='\\x" + separator + "', header=true, affinity=integer);"
         this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
+
+        // If it's a quick import, don't load it to a 'proper' table.
+        if (quick) {
+          postMessage({ vsvFileDetail: { tableName: fileName, backingFile: tempVSVFile } });
+          postMessage({ progress: "File " + fileName + " loaded."});
+          return;
+        }
 
         // Load the virtual table to a real table
         let tableName = "Table" + fileName.replace(/ /g, "").replace(".","");
@@ -905,7 +912,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         sql = "CREATE TABLE " + tableName + " AS\n SELECT * FROM temp.\"" + fileName + "\";";
         this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
 
-        postMessage({ progress: "Cleaning up" });
+        postMessage({ progress: "Table loaded." });
         // Drop the virtual table
         sql = "DROP TABLE temp.\"" + fileName + "\";";
         this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
