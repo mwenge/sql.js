@@ -900,7 +900,10 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
         // If it's a quick import, don't load it to a 'proper' table.
         if (quick) {
-          postMessage({ vsvFileDetail: { tableName: fileName, backingFile: tempVSVFile } });
+          postMessage({
+            "vsvtable": fileName,
+            "vsvback": tempVSVFile
+          });
           postMessage({ progress: "File " + fileName + " loaded."});
           return;
         }
