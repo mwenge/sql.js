@@ -1139,7 +1139,8 @@ static int vsvtabConnect(
         {
             do
             {
-                char *z = vsv_read_one_field(&sRdr);
+                const char *z = vsv_read_one_field(&sRdr);
+                z = vsv_skip_whitespace(z);
                 if ((nCol>0 && iCol<nCol) || (nCol<0 && bHeader))
                 {
                     sqlite3_str_appendf(pStr,"%s\"%w\"", zSep, z);
