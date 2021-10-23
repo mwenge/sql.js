@@ -880,7 +880,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
     }
 
-    Database.prototype["createVSVTable"] = function createVSVTable(data, fileName, separator, quick) {
+    Database.prototype["createVSVTable"] = function createVSVTable(data, fileName, separator, quick, header) {
         if (!this.db) {
             throw "Database closed";
         }
@@ -895,7 +895,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
         //Create the virtual table
         let sql = "CREATE VIRTUAL TABLE \"" + fileName + "\" USING vsv(filename='" + tempVSVFile +
-            "', fsep='\\x" + separator + "', header=true, affinity=integer);"
+            "', fsep='\\x" + separator + "', header=" + header + ", affinity=real);"
         this.handleError(sqlite3_exec(this.db, sql, 0, 0, apiTemp));
 
         // If it's a quick import, don't load it to a 'proper' table.
